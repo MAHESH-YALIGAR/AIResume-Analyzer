@@ -1,1 +1,7 @@
-_pycache_
+# Block all Python compiled cache folders
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Block Jupyter Notebook checkpoint caches
+.ipynb_checkpoints/
