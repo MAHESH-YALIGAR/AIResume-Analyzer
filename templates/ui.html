@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResumeIQ</title>
+
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+
+</head>
+
+<body class="bg-slate-950 text-white min-h-screen">
+
+  <div class="max-w-6xl mx-auto px-4 py-10">
+
+    
+    <!-- Hero -->
+
+    <div class="text-center mb-10">
+
+      <h1 class="text-5xl font-bold text-yellow-400">
+        ResumeIQ
+      </h1>
+
+      <p class="text-slate-400 mt-3">
+        AI Powered Resume Analyzer
+      </p>
+
+    </div>
+
+    <!-- Upload Card -->
+
+    <div class="bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-xl">
+
+      <form id="resumeForm">
+
+        <label
+          class="block border-2 border-dashed border-yellow-400 rounded-2xl p-10 text-center cursor-pointer hover:bg-slate-800 transition">
+
+          <div class="text-5xl mb-4">
+            📄
+          </div>
+
+          <h3 class="text-xl font-semibold">
+            Upload Resume
+          </h3>
+
+          <p id="filename" class="text-slate-400 mt-2">
+            Choose PDF File
+          </p>
+
+          <input id="resume" type="file" name="file" accept=".pdf" class="hidden" required>
+
+        </label>
+
+        <textarea name="job_description" placeholder="Paste Job Description..."
+          class="w-full mt-6 bg-slate-950 border border-slate-700 rounded-xl p-4 h-36 focus:outline-none focus:border-yellow-400"></textarea>
+
+        <button
+          class="w-full mt-6 bg-yellow-400 text-black py-4 rounded-xl font-bold text-lg hover:scale-[1.01] transition">
+          Analyze Resume
+        </button>
+
+      </form>
+
+    </div>
+
+    <!-- Loading -->
+
+    <div id="loading" class="hidden text-center py-10">
+
+      <div class="w-12 h-12 border-4 border-slate-700 border-t-yellow-400 rounded-full animate-spin mx-auto">
+      </div>
+
+      <p class="mt-4 text-slate-400">
+        Analyzing Resume...
+      </p>
+
+    </div>
+
+    <!-- Results -->
+
+    <div id="result" class="mt-8 space-y-6">
+    </div>
+    
+
+  </div>
+
+  <script>
+
+    const resumeInput =
+      document.getElementById("resume");
+
+    resumeInput.addEventListener("change", () => {
+
+      document.getElementById("filename")
+        .innerText =
+        resumeInput.files[0].name;
+
+    });
+
+    document
+      .getElementById("resumeForm")
+      .addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        document
+          .getElementById("loading")
+          .classList.remove("hidden");
+
+        const formData =
+          new FormData(e.target);
+
+        const response =
+          await fetch('http://127.0.0.1:8081/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+        const data =
+          await response.json();
+
+        document
+          .getElementById("loading")
+          .classList.add("hidden");
+
+        let confidenceHTML = "";
+
+        data.role_confidence.forEach(item => {
+
+          confidenceHTML += `
+<div>
+
+<div class="flex justify-between mb-1">
+<span>${item.role}</span>
+<span>${item.confidence}%</span>
+</div>
+
+<div class="w-full bg-slate-700 rounded-full h-3">
+
+<div
+class="bg-yellow-400 h-3 rounded-full"
+style="width:${item.confidence}%">
+</div>
+
+</div>
+
+</div>
+`;
+
+        });
+
+        document
+          .getElementById("result")
+          .innerHTML = `
+
+<div class="bg-slate-900 rounded-3xl p-6">
+
+<h2 class="text-xl text-slate-400">
+Predicted Role
+</h2>
+
+<p class="text-4xl font-bold text-yellow-400 mt-2">
+${data.predicted_role}
+</p>
+
+</div>
+
+<div class="bg-slate-900 rounded-3xl p-6">
+
+<h2 class="text-xl font-bold mb-5">
+🏆 Career Matches
+</h2>
+
+${confidenceHTML}
+
+</div>
+
+<div class="bg-slate-900 rounded-3xl p-6">
+
+<h2 class="text-xl font-bold mb-4">
+🛠 Skills Found
+</h2>
+
+<div class="flex flex-wrap gap-2">
+
+${data.skills_found.map(skill =>
+            `<span class="bg-green-900 text-green-300 px-3 py-2 rounded-full">
+${skill}
+</span>`
+          ).join("")}
+
+</div>
+
+</div>
+
+<div class="bg-slate-900 rounded-3xl p-6">
+
+<h2 class="text-xl font-bold mb-4">
+❌ Missing Skills
+</h2>
+
+<div class="flex flex-wrap gap-2">
+
+${data.missing_skills.length ?
+            data.missing_skills.map(skill =>
+              `<span class="bg-red-900 text-red-300 px-3 py-2 rounded-full">
+${skill}
+</span>`
+            ).join("")
+            :
+            `<span class="text-green-400">
+No Missing Skills 🎉
+</span>`
+          }
+
+</div>
+
+</div>
+
+<div class="bg-slate-900 rounded-3xl p-6">
+
+<h2 class="text-xl font-bold mb-4">
+💡 Suggestions
+</h2>
+
+${data.suggestions.length
+            ?
+            data.suggestions.map(item =>
+              `<div class="bg-slate-800 rounded-xl p-3 mb-2">
+${item}
+</div>`
+            ).join("")
+            :
+            `<div class="text-green-400">
+Resume matches requirements.
+</div>`
+          }
+
+</div>
+
+`;
+
+      });
+
+  </script>
+
+</body>
+
+</html>
