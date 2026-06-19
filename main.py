@@ -44,7 +44,7 @@ app.add_middleware(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
-        "index.html",
+        "ui.html",
         {"request": request}
     )
 
