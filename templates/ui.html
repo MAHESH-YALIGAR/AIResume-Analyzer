@@ -92,15 +92,13 @@
 
   <script>
 
-    const resumeInput =
-      document.getElementById("resume");
+    const resumeInput = document.getElementById("resume");
 
     resumeInput.addEventListener("change", () => {
-
-      document.getElementById("filename")
-        .innerText =
-        resumeInput.files[0].name;
-
+      if (resumeInput.files.length > 0) {
+        document.getElementById("filename").innerText =
+          resumeInput.files[0].name;
+      }
     });
 
     document
@@ -109,141 +107,182 @@
 
         e.preventDefault();
 
+        const resultDiv = document.getElementById("result");
+
+        resultDiv.innerHTML = "";
+
         document
           .getElementById("loading")
           .classList.remove("hidden");
 
-        const formData =
-          new FormData(e.target);
+        try {
 
-        const response = await fetch('/upload', {
-          method: 'POST',
-          body: formData
-        });
+          const formData = new FormData(e.target);
 
-        const data =
-          await response.json();
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+          });
 
-        document
-          .getElementById("loading")
-          .classList.add("hidden");
+          const data = await response.json();
 
-        let confidenceHTML = "";
+          document
+            .getElementById("loading")
+            .classList.add("hidden");
 
-        data.role_confidence.forEach(item => {
+          if (data.error) {
 
-          confidenceHTML += `
-<div>
+            resultDiv.innerHTML = `
+                <div class="bg-red-900 p-6 rounded-2xl">
+                    <h2 class="text-xl font-bold">
+                        Error
+                    </h2>
+                    <p class="mt-2">
+                        ${data.error}
+                    </p>
+                </div>
+                `;
 
-<div class="flex justify-between mb-1">
-<span>${item.role}</span>
-<span>${item.confidence}%</span>
-</div>
-
-<div class="w-full bg-slate-700 rounded-full h-3">
-
-<div
-class="bg-yellow-400 h-3 rounded-full"
-style="width:${item.confidence}%">
-</div>
-
-</div>
-
-</div>
-`;
-
-        });
-
-        document
-          .getElementById("result")
-          .innerHTML = `
-
-<div class="bg-slate-900 rounded-3xl p-6">
-
-<h2 class="text-xl text-slate-400">
-Predicted Role
-</h2>
-
-<p class="text-4xl font-bold text-yellow-400 mt-2">
-${data.predicted_role}
-</p>
-
-</div>
-
-<div class="bg-slate-900 rounded-3xl p-6">
-
-<h2 class="text-xl font-bold mb-5">
-🏆 Career Matches
-</h2>
-
-${confidenceHTML}
-
-</div>
-
-<div class="bg-slate-900 rounded-3xl p-6">
-
-<h2 class="text-xl font-bold mb-4">
-🛠 Skills Found
-</h2>
-
-<div class="flex flex-wrap gap-2">
-
-${data.skills_found.map(skill =>
-            `<span class="bg-green-900 text-green-300 px-3 py-2 rounded-full">
-${skill}
-</span>`
-          ).join("")}
-
-</div>
-
-</div>
-
-<div class="bg-slate-900 rounded-3xl p-6">
-
-<h2 class="text-xl font-bold mb-4">
-❌ Missing Skills
-</h2>
-
-<div class="flex flex-wrap gap-2">
-
-${data.missing_skills.length ?
-            data.missing_skills.map(skill =>
-              `<span class="bg-red-900 text-red-300 px-3 py-2 rounded-full">
-${skill}
-</span>`
-            ).join("")
-            :
-            `<span class="text-green-400">
-No Missing Skills 🎉
-</span>`
+            return;
           }
 
-</div>
+          let confidenceHTML = "";
 
-</div>
+          data.role_confidence.forEach(item => {
 
-<div class="bg-slate-900 rounded-3xl p-6">
+            confidenceHTML += `
+                <div class="mb-4">
 
-<h2 class="text-xl font-bold mb-4">
-💡 Suggestions
-</h2>
+                    <div class="flex justify-between mb-1">
+                        <span>${item.role}</span>
+                        <span>${item.confidence}%</span>
+                    </div>
 
-${data.suggestions.length
-            ?
-            data.suggestions.map(item =>
-              `<div class="bg-slate-800 rounded-xl p-3 mb-2">
-${item}
-</div>`
-            ).join("")
-            :
-            `<div class="text-green-400">
-Resume matches requirements.
-</div>`
-          }
+                    <div class="w-full bg-slate-700 rounded-full h-3">
 
-</div>
+                        <div
+                            class="bg-yellow-400 h-3 rounded-full"
+                            style="width:${item.confidence}%">
+                        </div>
 
-`;
+                    </div>
+
+                </div>
+                `;
+          });
+
+          resultDiv.innerHTML = `
+
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+
+                <h2 class="text-xl text-slate-400">
+                    Predicted Role
+                </h2>
+
+                <p class="text-4xl font-bold text-yellow-400 mt-2">
+                    ${data.predicted_role}
+                </p>
+
+            </div>
+
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+
+                <h2 class="text-xl font-bold mb-5">
+                    🏆 Career Matches
+                </h2>
+
+                ${confidenceHTML}
+
+            </div>
+
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+
+                <h2 class="text-xl font-bold mb-4">
+                    🛠 Skills Found (${data.total_skills_found})
+                </h2>
+
+                <div class="flex flex-wrap gap-2">
+
+                    ${data.skills_found.map(skill => `
+                    <span class="bg-green-900 text-green-300 px-3 py-2 rounded-full">
+                        ${skill}
+                    </span>
+                    `).join("")}
+
+                </div>
+
+            </div>
+
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+
+                <h2 class="text-xl font-bold mb-4">
+                    ❌ Missing Skills
+                </h2>
+
+                <div class="flex flex-wrap gap-2">
+
+                    ${data.missing_skills.length > 0
+              ?
+              data.missing_skills.map(skill => `
+                        <span class="bg-red-900 text-red-300 px-3 py-2 rounded-full">
+                            ${skill}
+                        </span>
+                        `).join("")
+              :
+              `
+                        <span class="text-green-400">
+                            No Missing Skills 🎉
+                        </span>
+                        `
+            }
+
+                </div>
+
+            </div>
+
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+
+                <h2 class="text-xl font-bold mb-4">
+                    💡 Suggestions
+                </h2>
+
+                ${data.suggestions.length > 0
+              ?
+              data.suggestions.map(item => `
+                    <div class="bg-slate-800 rounded-xl p-3 mb-2">
+                        ${item}
+                    </div>
+                    `).join("")
+              :
+              `
+                    <div class="text-green-400">
+                        Resume matches requirements.
+                    </div>
+                    `
+            }
+
+            </div>
+
+            `;
+
+        }
+        catch (error) {
+
+          document
+            .getElementById("loading")
+            .classList.add("hidden");
+
+          resultDiv.innerHTML = `
+            <div class="bg-red-900 p-6 rounded-2xl">
+                <h2 class="text-xl font-bold">
+                    Server Error
+                </h2>
+                <p class="mt-2">
+                    Could not connect to backend.
+                </p>
+            </div>
+            `;
+        }
 
       });
 

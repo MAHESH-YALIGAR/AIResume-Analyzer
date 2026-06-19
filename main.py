@@ -5,14 +5,14 @@ import uvicorn
 import nltk
 import re
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 
 from data import skilled_db
-
 
 # ==========================
 # Load Model
@@ -21,12 +21,13 @@ from data import skilled_db
 model = joblib.load("logestic_regression.joblib")
 vectorizer = joblib.load("vectorizer.joblib")
 
-
 # ==========================
 # FastAPI
 # ==========================
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,16 +38,27 @@ app.add_middleware(
 )
 
 # ==========================
+# Home Page
+# ==========================
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
+
+# ==========================
 # NLTK
 # ==========================
 
-nltk.download("punkt")
-nltk.download("stopwords")
+nltk.download("punkt", quiet=True)
+nltk.download("stopwords", quiet=True)
 
 stop_words = set(stopwords.words("english"))
 
 # ==========================
-# Extract PDF Text
+# PDF Text Extraction
 # ==========================
 
 def extract_text(file):
@@ -64,9 +76,8 @@ def extract_text(file):
 
     return text
 
-
 # ==========================
-# Preprocessing
+# Text Preprocessing
 # ==========================
 
 def preprocess(text):
@@ -86,7 +97,6 @@ def preprocess(text):
 
     return " ".join(tokens)
 
-
 # ==========================
 # Skill Extraction
 # ==========================
@@ -101,15 +111,12 @@ def extract_skills(text):
 
         for skill in skills:
 
-            skill_lower = skill.lower()
-
-            pattern = r"\b" + re.escape(skill_lower) + r"\b"
+            pattern = r"\b" + re.escape(skill.lower()) + r"\b"
 
             if re.search(pattern, text):
                 found_skills.add(skill)
 
     return sorted(list(found_skills))
-
 
 # ==========================
 # Upload API
@@ -121,134 +128,101 @@ async def upload_resume(
     job_description: str = Form("")
 ):
 
-    try:
+    contents = await file.read()
 
-        contents = await file.read()
+    resume_text = extract_text(
+        io.BytesIO(contents)
+    )
 
-        # -------------------
-        # Resume Text
-        # -------------------
+    clean_resume = preprocess(
+        resume_text
+    )
 
-        resume_text = extract_text(
-            io.BytesIO(contents)
-        )
+    resume_skills = extract_skills(
+        clean_resume
+    )
 
-        clean_resume = preprocess(
-            resume_text
-        )
+    clean_jd = preprocess(
+        job_description
+    )
 
-        # -------------------
-        # Resume Skills
-        # -------------------
+    jd_skills = extract_skills(
+        clean_jd
+    )
 
-        resume_skills = extract_skills(
-            clean_resume
-        )
+    missing_skills = list(
+        set(jd_skills) - set(resume_skills)
+    )
 
-        # -------------------
-        # JD Skills
-        # -------------------
+    suggestions = [
+        f"Learn {skill}"
+        for skill in missing_skills
+    ]
 
-        clean_jd = preprocess(
-            job_description
-        )
+    combined_text = (
+        clean_resume +
+        " " +
+        clean_jd
+    )
 
-        jd_skills = extract_skills(
-            clean_jd
-        )
+    vector = vectorizer.transform(
+        [combined_text]
+    )
 
-        # -------------------
-        # Missing Skills
-        # -------------------
+    prediction = model.predict(
+        vector
+    )[0]
 
-        missing_skills = list(
-            set(jd_skills) - set(resume_skills)
-        )
+    probabilities = model.predict_proba(
+        vector
+    )[0]
 
-        suggestions = [
-            f"Learn {skill}"
-            for skill in missing_skills
-        ]
-
-        # -------------------
-        # Prediction
-        # Resume + JD
-        # -------------------
-
-        combined_text = (
-            clean_resume +
-            " " +
-            clean_jd
-        )
-
-        vector = vectorizer.transform(
-            [combined_text]
-        )
-
-        prediction = model.predict(
-            vector
-        )[0]
-
-        probabilities = model.predict_proba(
-            vector
-        )[0]
-
-        role_confidence = sorted(
-            [
-                {
-                    "role": role,
-                    "confidence": round(
-                        score * 100,
-                        2
-                    )
-                }
-                for role, score in zip(
-                    model.classes_,
-                    probabilities
+    role_confidence = sorted(
+        [
+            {
+                "role": role,
+                "confidence": round(
+                    score * 100,
+                    2
                 )
-            ],
-            key=lambda x: x["confidence"],
-            reverse=True
-        )
+            }
+            for role, score in zip(
+                model.classes_,
+                probabilities
+            )
+        ],
+        key=lambda x: x["confidence"],
+        reverse=True
+    )
 
-        # Top 5 only
-        role_confidence = role_confidence[:5]
+    return {
 
-        return {
+        "predicted_role": prediction,
 
-            "predicted_role": prediction,
+        "skills_found": resume_skills,
 
-            "skills_found": resume_skills,
+        "total_skills_found": len(
+            resume_skills
+        ),
 
-            "total_skills_found": len(
-                resume_skills
-            ),
+        "job_required_skills": jd_skills,
 
-            "job_required_skills": jd_skills,
+        "missing_skills": missing_skills,
 
-            "missing_skills": missing_skills,
+        "suggestions": suggestions,
 
-            "suggestions": suggestions,
-
-            "role_confidence": role_confidence
-        }
-
-    except Exception as e:
-
-        return {
-            "error": str(e)
-        }
-
+        "role_confidence": role_confidence[:5]
+    }
 
 # ==========================
-# Run
+# Local Run
 # ==========================
 
 if __name__ == "__main__":
 
     uvicorn.run(
         "main:app",
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=8081,
         reload=True
     )
