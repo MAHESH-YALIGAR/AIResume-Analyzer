@@ -1,4 +1,6 @@
 <img width="1897" height="913" alt="Screenshot 2026-07-13 225104" src="https://github.com/user-attachments/assets/26e49866-1181-4fb4-a3fa-b68620f838b0" />
+![Uploading image.png…]()
+
 # AI Resume Analyzer & Job Description Matcher
 
 An AI-powered web application built with **FastAPI** and **Machine Learning** that parses resumes (PDFs), extracts core technical skills, and matches them against job descriptions. The system leverages natural language processing (NLP) and a trained **Logistic Regression** classifier to predict the target job role and calculate a confidence match score.
