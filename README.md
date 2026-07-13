@@ -1,5 +1,5 @@
 <img width="1897" height="913" alt="Screenshot 2026-07-13 225104" src="https://github.com/user-attachments/assets/26e49866-1181-4fb4-a3fa-b68620f838b0" />
-![Uploading image.png…]()
+
 
 # AI Resume Analyzer & Job Description Matcher
 
@@ -13,6 +13,7 @@ An AI-powered web application built with **FastAPI** and **Machine Learning** th
 - **Confidence Metrics**: Outputs a structured breakdown of the top 5 predicted roles with percentage confidence scores.
 
 ---
+<img width="1882" height="908" alt="Screenshot 2026-07-13 225118" src="https://github.com/user-attachments/assets/8aad9f40-e758-46d6-a8fe-d56544a5f702" />
 
 ## 🛠️ Tech Stack
 
